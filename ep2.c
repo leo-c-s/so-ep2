@@ -15,7 +15,7 @@ void init_track(int d, int n) {
     race_track = malloc(sizeof(pthread_t*) * d);
 
     for (int i = 0; i < d; i++) {
-        race_track[d] = malloc(sizeof(pthread_t) * n);
+        race_track[d] = malloc(sizeof(pthread_t) * 10);
     }
 }
 
