@@ -5,7 +5,7 @@
 
 #define LANES 10
 
-pthread_t **race_track;
+pthread_t **pista;
 pthread_mutex_t **track_mutex;
 
 pthread_barrier_t step_start;
@@ -26,11 +26,11 @@ typedef struct {
 } Biker;
 
 void init_track(int d) {
-    race_track = malloc(sizeof(pthread_t*) * d);
+    pista = malloc(sizeof(pthread_t*) * d);
     track_mutex = malloc(sizeof(pthread_mutex_t*) * d);
 
     for (int i = 0; i < d; i++) {
-        race_track[i] = malloc(sizeof(pthread_t) * LANES);
+        pista[i] = malloc(sizeof(pthread_t) * LANES);
         track_mutex[i] = malloc(sizeof(pthread_mutex_t) * LANES);
 
         for (int j = 0; j < LANES; j++) {
@@ -41,10 +41,10 @@ void init_track(int d) {
 
 void free_track(int d) {
     for (int i = 0; i < d; i++) {
-        free(race_track[i]);
+        free(pista[i]);
         free(track_mutex[i]);
     }
-    free(race_track);
+    free(pista);
     free(track_mutex);
 }
 
@@ -70,12 +70,48 @@ void* cycle(void* arg) {
         */
 
         nanosleep(&time_step, NULL);
-        biker->laps_remaining--;
 
         pthread_barrier_wait(&step_end);
     }
 
     return NULL;
+}
+
+void move(int d, Biker* biker, int n, int bikersLeft)
+{
+    int completouVolta = 0;
+    if (biker->position.x != d - 1)
+    {
+        if (pista[biker->position.x + 1][biker->position.y] == NULL)
+        {
+            pista[biker->position.x][biker->position.y] = NULL;
+            biker->position.x = biker->position.x + 1;
+            pista[biker->position.x][biker->position.y] = biker->id;
+        }
+    }
+    else
+    {
+        if(pista[0][biker->position.y] == NULL)
+        {
+            pista[biker->position.x][biker->position.y] = NULL;
+            biker->position.x = 0;
+            biker->laps_remaining--;
+            completouVolta = 1;
+            pista[biker->position.x][biker->position.y] = biker->id;
+        }
+    }
+
+    if(completouVolta && (n-biker->laps_remaining)%6 == 0)
+    {
+        if(bikersLeft > 5 && rand()%20 == 0) breakBiker(biker, n);
+    }
+}
+
+void breakBiker(Biker* bk, int n)
+{
+    printf("Ciclista de id %d quebrou na volta %d!\n", bk->id, n-bk->laps_remaining);
+    pista[bk->position.x][bk->position.y] = NULL;
+    pthread_join(bk->id,NULL);
 }
 
 Biker* create_bikers(int n) {
@@ -99,10 +135,10 @@ void position_bikers(Biker *bikers, int n) {
         pair pos = { j / 5, j % 5 };
 
         if (i != j) {
-            race_track[i / 5][i % 5] = race_track[pos.x][pos.y];
+            pista[i / 5][i % 5] = pista[pos.x][pos.y];
         }
 
-        race_track[pos.x][pos.y] = bikers[i].id;
+        pista[pos.x][pos.y] = bikers[i].id;
 
         bikers[i].position = pos;
     }
