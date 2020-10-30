@@ -67,7 +67,7 @@ void choose_speed(Biker *biker) {
 }
 
 void breakBiker(Biker* biker) {
-    printf("Ciclista de id %ld quebrou na volta %d!\n",
+    printf("Ciclista de id %lu quebrou na volta %d!\n",
             biker->id,
             n - biker->lap);
     pista[biker->position.x][biker->position.y] = 0;
@@ -130,13 +130,13 @@ void move(Biker *biker) {
                 y ++;
             }
         } else if (get_biker(pista[x][y])->moved) {
-            printf("biker %d vai tentar ultrapassagem\n", (int) biker->id);
+            printf("biker %lu vai tentar ultrapassagem\n", biker->id);
             overtake(biker);
         } else {
 
             tries++;
             struct timespec wait = { 0, time_step.tv_nsec / 2 };
-            //printf("biker %d antes do nanosleep do move\n", (int) biker->id);
+            //printf("biker %lu antes do nanosleep do move\n", biker->id);
             nanosleep(&wait, NULL);
             
         }
@@ -162,12 +162,12 @@ void* cycle(void* arg) {
         }
 
         choose_speed(biker);
-        //printf("biker %d antes do move\n", (int) biker->id);
+        //printf("biker %lu antes do move\n", biker->id);
         move(biker);
-        //printf("biker %d saiu do move\n", (int) biker->id);
+        //printf("biker %lu saiu do move\n", biker->id);
 
         nanosleep(&time_step, NULL);
-        printf("biker %d antes da segunda barreira\n", (int) biker->id);
+        printf("biker %lu antes da segunda barreira\n", biker->id);
         pthread_barrier_wait(&step_end);
     }
 
@@ -186,7 +186,7 @@ Biker* create_bikers() {
         bikers[i].is_alive = 1;
         pthread_create(&id, NULL, &cycle, &bikers[i]);
         bikers[i].id = id;
-        //printf("created biker %d\n", (int) id);
+        //printf("created biker %lu\n", id);
     }
 
     return bikers;
@@ -285,7 +285,7 @@ int main(int argc, char *argv[]) {
             if (pista[last_pos][i] != 0) {
                 Biker *b = get_biker(pista[last_pos][i]);
                 if (b->is_alive && eliminate == 0) {
-                    printf("biker %ld was eliminated\n",
+                    printf("biker %lu was eliminated\n",
                             b->id);
                     eliminated = b->id;
                     pista[last_pos][i] = 0;
@@ -305,7 +305,7 @@ int main(int argc, char *argv[]) {
     pthread_barrier_wait(&step_start);
     for (int i = 0; i < n0; i++) {
         if (bikers[i].id == eliminated) {
-            printf("biker %ld won\n", bikers[i].id);
+            printf("biker %lu won\n", bikers[i].id);
             pthread_join(bikers[i].id, NULL);
         }
     }
