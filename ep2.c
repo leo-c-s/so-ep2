@@ -5,7 +5,7 @@
 
 #define LANES 10
 
-struct timespec time_step = { 0, 60000 };
+struct timespec time_step = { 0, 6000 };
 
 typedef struct {
     int x;
@@ -86,8 +86,8 @@ Biker* get_biker(pthread_t biker_id) {
 void overtake(Biker *biker) {
     int x0 = biker->position.x, y0 = biker->position.y;
     int x = (x0 + 1) % d, y = y0 + 1;
-
-    while (y < LANES && !biker->moved) {
+    int tries = 0;
+    while (y < LANES && !biker->moved && biker->speed != 30 && tries < 5) {
         if (pista[x][y] == 0) {
             if (pthread_mutex_trylock(&track_mutex[x][y]) == 0) {
                 pista[x0][y0] = 0;
@@ -102,13 +102,14 @@ void overtake(Biker *biker) {
         } else if (get_biker(pista[x][y])->moved) {
             y ++;
         } else {
+            tries++;
             struct timespec wait = { 0, time_step.tv_nsec / 2 };
             nanosleep(&wait, NULL);
         }
     }
 
     // if failed to move
-    if (y == LANES) {
+    if (y == LANES || biker->speed == 30 || tries >= 3) {
         biker->moved = 1;
     }
 }
@@ -116,8 +117,8 @@ void overtake(Biker *biker) {
 void move(Biker *biker) {
     int x0 = biker->position.x, y0 = biker->position.y;
     int x = (x0 + 1) % d, y = y0;
-
-    while (!biker->moved) {
+    int tries = 0;
+    while (!biker->moved && tries < 10) {
         if (pista[x][y] == 0) {
             if (pthread_mutex_trylock(&track_mutex[x][y]) == 0) {
                 pista[x0][y0] = 0;
@@ -129,10 +130,15 @@ void move(Biker *biker) {
                 y ++;
             }
         } else if (get_biker(pista[x][y])->moved) {
+            printf("biker %d vai tentar ultrapassagem\n", (int) biker->id);
             overtake(biker);
         } else {
+
+            tries++;
             struct timespec wait = { 0, time_step.tv_nsec / 2 };
+            //printf("biker %d antes do nanosleep do move\n", (int) biker->id);
             nanosleep(&wait, NULL);
+            
         }
     }
 
@@ -156,10 +162,12 @@ void* cycle(void* arg) {
         }
 
         choose_speed(biker);
+        //printf("biker %d antes do move\n", (int) biker->id);
         move(biker);
+        //printf("biker %d saiu do move\n", (int) biker->id);
 
         nanosleep(&time_step, NULL);
-
+        printf("biker %d antes da segunda barreira\n", (int) biker->id);
         pthread_barrier_wait(&step_end);
     }
 
@@ -171,13 +179,14 @@ Biker* create_bikers() {
     pthread_t id;
 
     for (int i = 0; i < n; i++) {
-        pthread_create(&id, NULL, &cycle, &bikers[i]);
-        bikers[i].id = id;
         bikers[i].speed = 30;
         bikers[i].lap = 0;
         bikers[i].moved = 0;
         bikers[i].broke = 0;
         bikers[i].is_alive = 1;
+        pthread_create(&id, NULL, &cycle, &bikers[i]);
+        bikers[i].id = id;
+        //printf("created biker %d\n", (int) id);
     }
 
     return bikers;
@@ -206,7 +215,7 @@ void print_race_state() {
     for (int i = d - 1; i >= 0; i--) {
         for (int j = 0; j < LANES; j++) {
             if (pista[i][j] && get_biker(pista[i][j])->is_alive) {
-                printf("thread %lu is in rank %d\n", pista[i][j], rank);
+                printf("thread %lu is in rank %d and position %d %d\n", pista[i][j], rank, i, j);
                 empty = 0;
             }
         }
@@ -228,6 +237,7 @@ int main(int argc, char *argv[]) {
     d = atoi(argv[1]);
     n0 = n = atoi(argv[2]);
 
+    printf("n = %d e d = %d\n", n, d);
     srand(12345);
 
     init_track();
@@ -238,11 +248,12 @@ int main(int argc, char *argv[]) {
     bikers = create_bikers();
     position_bikers(bikers);
 
-    print_race_state();
+    //print_race_state();
     unsigned long eliminated = 0;
     while (n > 0) {
         /*! TODO: it gets stuck on the first barrier sometimes
         */
+
         pthread_barrier_wait(&step_start); // let threads run
         // kill thread of biker that was eliminated in the previous iteration
         if (eliminated) {
@@ -250,8 +261,9 @@ int main(int argc, char *argv[]) {
         }
         pthread_barrier_destroy(&step_start);
         pthread_barrier_init(&step_start, NULL, n+1);
-
+        printf("Vai esperar segunda barreira\n");
         pthread_barrier_wait(&step_end); // wait for threads to finish
+        printf("Passou da segunda\n");
 
         int last_pos = d - 1;
         for (int i = 0; i < n0; i++) {
@@ -290,8 +302,8 @@ int main(int argc, char *argv[]) {
 
         print_race_state();
     }
-
-    for (int i = 0; i < n; i++) {
+    pthread_barrier_wait(&step_start);
+    for (int i = 0; i < n0; i++) {
         if (bikers[i].id == eliminated) {
             printf("biker %ld won\n", bikers[i].id);
             pthread_join(bikers[i].id, NULL);
