@@ -87,7 +87,7 @@ void overtake(Biker *biker) {
     int x0 = biker->position.x, y0 = biker->position.y;
     int x = (x0 + 1) % d, y = y0 + 1;
     int tries = 0;
-    while (y < LANES && !biker->moved && biker->speed != 30 && tries < 5) {
+    while (y < LANES && !biker->moved && tries < 5) {
         if (pista[x][y] == 0) {
             if (pthread_mutex_trylock(&track_mutex[x][y]) == 0) {
                 pista[x0][y0] = 0;
@@ -109,7 +109,7 @@ void overtake(Biker *biker) {
     }
 
     // if failed to move
-    if (y == LANES || biker->speed == 30 || tries >= 3) {
+    if (y == LANES || tries >= 3) {
         biker->moved = 1;
     }
 }
@@ -130,8 +130,13 @@ void move(Biker *biker) {
                 y ++;
             }
         } else if (get_biker(pista[x][y])->moved) {
-            printf("biker %lu vai tentar ultrapassagem\n", biker->id);
-            overtake(biker);
+            if (biker->speed != 30) {
+                printf("biker %lu vai tentar ultrapassagem\n", biker->id);
+                overtake(biker);
+            }
+            else {
+                biker->moved = 1;
+            }
         } else {
 
             tries++;
