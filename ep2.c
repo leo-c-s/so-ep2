@@ -28,7 +28,9 @@ pthread_mutex_t **track_mutex;
 pthread_barrier_t step_start;
 pthread_barrier_t step_end;
 
-int d, n, n0;
+pthread_mutex_t mutexVolta;
+
+int d, n, n0, terminouVolta;
 
 Biker *bikers;
 
@@ -150,6 +152,9 @@ void move(Biker *biker) {
     // if moved and finished lap
     if (biker->moved && biker->position.x == 0) {
         biker->lap ++;
+		pthread_mutex_lock(&mutexVolta);
+		terminouVolta = 1;
+		pthread_mutex_unlock(&mutexVolta);
         if (biker->lap % 6 == 0 && n > 5 && rand() % 20 == 0) {
             breakBiker(biker);
         }
@@ -241,6 +246,8 @@ int main(int argc, char *argv[]) {
 
     d = atoi(argv[1]);
     n0 = n = atoi(argv[2]);
+	terminouVolta = 0;
+	int eliminados;
 
     printf("n = %d e d = %d\n", n, d);
     srand(12345);
@@ -258,7 +265,9 @@ int main(int argc, char *argv[]) {
     while (n > 0) {
         /*! TODO: it gets stuck on the first barrier sometimes
         */
-
+		
+		eliminados = 0;
+		terminouVolta = 0;
         pthread_barrier_wait(&step_start); // let threads run
         // kill thread of biker that was eliminated in the previous iteration
         if (eliminated) {
@@ -289,19 +298,20 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < LANES; i++) {
             if (pista[last_pos][i] != 0) {
                 Biker *b = get_biker(pista[last_pos][i]);
-                if (b->is_alive && eliminate == 0) {
+                if (b->is_alive && eliminate == 0 && terminouVolta != 0) {
                     printf("biker %lu was eliminated\n",
                             b->id);
                     eliminated = b->id;
                     pista[last_pos][i] = 0;
                     b->is_alive = 0;
+					  eliminados++;
                     break;
                 } else {
                     eliminate--;
                 }
             }
         }
-        n--;
+        if(eliminados != 0) n--;
         pthread_barrier_destroy(&step_end);
         pthread_barrier_init(&step_end, NULL, n+1);
 
