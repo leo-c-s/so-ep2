@@ -92,8 +92,6 @@ void append_ranking(Biker *biker) {
 
     new->lap_time = t;
     list->size ++;
-    printf("bbbbbbbbbbbbbbbbbbbbbbbbbbb\n");
-    printf("lap %d, list size = %d\n", biker->lap, list->size);
 }
 
 void choose_speed(Biker *biker) {
@@ -143,7 +141,6 @@ void overtake(Biker *biker) {
                 }
                 pthread_mutex_unlock(&track_mutex[x0][y0]);
 
-                //printf("thread %lu will move to (%d, %d)\n", biker->id, x, y);
                 // go to next position
                 pista[x][y] = biker->id;
                 pthread_mutex_unlock(&track_mutex[x][y]);
@@ -177,7 +174,7 @@ void move(Biker *biker) {
 
     while (!biker->moved && tries < 10) {
         if (pthread_mutex_lock(&track_mutex[x][y]) == 0) {
-            //printf("thread %lu locked position (%d, %d)\n", biker->id,x,y);
+
             if (pista[x][y] == 0) {
                 // leave current position
                 pthread_mutex_lock(&track_mutex[x0][y0]);
@@ -186,7 +183,6 @@ void move(Biker *biker) {
                 }
                 pthread_mutex_unlock(&track_mutex[x0][y0]);
 
-                //printf("thread %lu will move to (%d, %d)\n", biker->id, x, y);
                 // go to next position
                 pista[x][y] = biker->id;
                 pthread_mutex_unlock(&track_mutex[x][y]);
@@ -195,7 +191,6 @@ void move(Biker *biker) {
             } else if (get_biker(pista[x][y])->moved) {
                 pthread_mutex_unlock(&track_mutex[x][y]);
                 if (biker->speed != 30) {
-                    printf("biker %lu will overtake\n", biker->id);
                     overtake(biker);
                 }
                 else {
@@ -233,7 +228,7 @@ void move(Biker *biker) {
 void* cycle(void* arg) {
     Biker *biker = (Biker*) arg;
 
-    while (biker->lap < 2 * n ) {
+    while (biker->lap < 2 * n0 || n > 0) {
         biker->moved = 0;
         pthread_barrier_wait(&step_start);
         if (!biker->is_alive) {
@@ -317,7 +312,6 @@ void print_lap_ranking(int lap) {
     int rank = 1;
     int t0 = list->next->lap_time;
 
-    printf("aaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
     for (BikerList *p = list->next; p != list; p = p->next) {
         if (p->lap_time > t0) {
             t0 = p->lap_time;
@@ -342,7 +336,6 @@ int main(int argc, char *argv[]) {
     n0 = n = atoi(argv[2]);
 	int eliminados, last_finished_lap = 0;
 
-    printf("n = %d e d = %d\n", n, d);
     srand(12345);
 
     init_track();
@@ -368,9 +361,8 @@ int main(int argc, char *argv[]) {
         }
         pthread_barrier_destroy(&step_start);
         pthread_barrier_init(&step_start, NULL, n+1);
-        printf("Vai esperar segunda barreira\n");
+
         pthread_barrier_wait(&step_end); // wait for threads to finish
-        printf("Passou da segunda\n");
 
         if (ranking[last_finished_lap]->size == n) {
             Biker *b = ranking[last_finished_lap]->prev->biker;
@@ -389,7 +381,8 @@ int main(int argc, char *argv[]) {
 
         t++;
     }
-    //pthread_barrier_wait(&step_start);
+
+    pthread_barrier_wait(&step_start);
     for (int i = 0; i < n0; i++) {
         if (bikers[i].id == eliminated) {
             printf("biker %lu won\n", bikers[i].id);
@@ -397,8 +390,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // pthread_barrier_destroy(&step_start);
-    // pthread_barrier_destroy(&step_end);
+    pthread_barrier_destroy(&step_start);
+    pthread_barrier_destroy(&step_end);
 
     free(bikers);
     free_track();
