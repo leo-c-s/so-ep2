@@ -368,6 +368,8 @@ int main(int argc, char *argv[]) {
         pthread_barrier_destroy(&step_start);
         pthread_barrier_init(&step_start, NULL, n+1);
 
+        nanosleep(&time_step, NULL);
+
         pthread_barrier_wait(&step_end); // wait for threads to finish
 
         if (ranking[last_finished_lap]->size == n) {
