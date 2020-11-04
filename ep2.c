@@ -43,6 +43,8 @@ Biker *bikers;
 BikerList **ranking;
 pthread_mutex_t *ranking_mutex;
 
+BikerList *final_ranking;
+
 void init_track() {
     pista = malloc(sizeof(pthread_t*) * d);
     track_mutex = malloc(sizeof(pthread_mutex_t*) * d);
@@ -69,6 +71,7 @@ void free_track() {
 
 void init_ranking() {
     ranking = malloc(sizeof(BikerList*) * 2 * n);
+    final_ranking = malloc(sizeof(BikerList));
     ranking_mutex = malloc(sizeof(pthread_mutex_t) * 2 * n);
 
     for (int i = 0; i < 2 * n; i++) {
@@ -77,6 +80,8 @@ void init_ranking() {
         ranking[i]->lap_time = 0;
         ranking[i]->size = 0;
     }
+
+    final_ranking->prev = final_ranking->next = NULL;
 }
 
 void append_ranking(Biker *biker) {
@@ -325,6 +330,16 @@ void print_lap_ranking(int lap) {
     printf("\n");
 }
 
+void print_final_ranking() {
+    int rank = 1;
+
+    for (BikerList *p = final_ranking->next; p != NULL; p = p->next) {
+        printf("rank %d, biker %lu\n", rank, p->biker->id);
+        rank ++;
+    }
+    printf("\n");
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 3) {
         printf("Usage: %s <d> <n>\n"
@@ -369,8 +384,6 @@ int main(int argc, char *argv[]) {
         pthread_barrier_destroy(&step_start);
         pthread_barrier_init(&step_start, NULL, n+1);
 
-        nanosleep(&time_step, NULL);
-
         pthread_barrier_wait(&step_end); // wait for threads to finish
 
         if (ranking[last_finished_lap]->size == n) {
@@ -380,6 +393,13 @@ int main(int argc, char *argv[]) {
                 eliminated = b->id;
                 pista[b->position.x][b->position.y] = 0;
                 n--;
+                
+                BikerList *new = malloc(sizeof(BikerList));
+                new->lap_time = t;
+                new->biker = b;
+                new->prev = final_ranking;
+                new->next = final_ranking->next;
+                final_ranking->next = new;
             }
             print_lap_ranking(last_finished_lap);
             last_finished_lap ++;
@@ -397,6 +417,8 @@ int main(int argc, char *argv[]) {
             pthread_join(bikers[i].id, NULL);
         }
     }
+
+    print_final_ranking();
 
     pthread_barrier_destroy(&step_start);
     pthread_barrier_destroy(&step_end);
