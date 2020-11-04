@@ -322,6 +322,7 @@ void print_lap_ranking(int lap) {
         printf("biker %lu finished lap %d in rank %d\n",
                 p->biker->id, lap, rank);
     }
+    printf("\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -373,13 +374,13 @@ int main(int argc, char *argv[]) {
         pthread_barrier_wait(&step_end); // wait for threads to finish
 
         if (ranking[last_finished_lap]->size == n) {
-            Biker *b = ranking[last_finished_lap]->prev->biker;
-            b->is_alive = 0;
-            eliminated = b->id;
-            pista[b->position.x][b->position.y] = 0;
-            n--;
-            printf("biker %lu was eliminated in lap %d\n",
-                    b->id, last_finished_lap);
+            if (last_finished_lap % 2) {
+                Biker *b = ranking[last_finished_lap]->prev->biker;
+                b->is_alive = 0;
+                eliminated = b->id;
+                pista[b->position.x][b->position.y] = 0;
+                n--;
+            }
             print_lap_ranking(last_finished_lap);
             last_finished_lap ++;
         }
