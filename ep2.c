@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #define LANES 10
@@ -332,9 +333,14 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    int debug = 0;
+    if (argc == 4) {
+    printf("argv[3] == %s\n", argv[3]);
+        debug = strncmp(argv[3], "debug", 5) == 0;
+    }
     d = atoi(argv[1]);
     n0 = n = atoi(argv[2]);
-	int eliminados, last_finished_lap = 0;
+	int last_finished_lap = 0;
 
     srand(12345);
 
@@ -350,10 +356,10 @@ int main(int argc, char *argv[]) {
     unsigned long eliminated = 0;
     t = 0;
     while (n > 0) {
-        print_race_state();
+        if (debug) {
+            print_race_state();
+        }
 
-        /*! TODO: it gets stuck on the first barrier sometimes
-        */
         pthread_barrier_wait(&step_start); // let threads run
         // kill thread of biker that was eliminated in the previous iteration
         if (eliminated) {
