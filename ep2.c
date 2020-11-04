@@ -79,6 +79,7 @@ void init_ranking() {
         ranking[i]->prev = ranking[i]->next = ranking[i];
         ranking[i]->lap_time = 0;
         ranking[i]->size = 0;
+        pthread_mutex_init(&ranking_mutex[i], NULL);
     }
 
     final_ranking->prev = final_ranking->next = NULL;
@@ -98,6 +99,28 @@ void append_ranking(Biker *biker) {
 
     new->lap_time = t;
     list->size ++;
+}
+
+void free_ranking() {
+    BikerList *p, *q;
+    for (int i = 0; i < 2 * n0; i++) {
+        p = ranking[i]->next;
+        while (p != ranking[i]) {
+            q = p->next;
+            free(p);
+            p = q;
+        }
+        free(ranking[i]);
+    }
+    free(ranking);
+
+    while (final_ranking != NULL) {
+        q = final_ranking->next;
+        free(final_ranking);
+        final_ranking = q;
+    }
+
+    free(ranking_mutex);
 }
 
 void choose_speed(Biker *biker) {
@@ -425,6 +448,7 @@ int main(int argc, char *argv[]) {
 
     free(bikers);
     free_track();
+    free_ranking();
 
     return 0;
 }
