@@ -229,7 +229,7 @@ void move(Biker *biker) {
 void* cycle(void* arg) {
     Biker *biker = (Biker*) arg;
 
-    while (biker->lap < 2 * n0 || n > 0) {
+    while (n > 0) {
         biker->moved = 0;
         pthread_barrier_wait(&step_start);
         if (!biker->is_alive) {
@@ -390,7 +390,6 @@ int main(int argc, char *argv[]) {
         t++;
     }
 
-    pthread_barrier_wait(&step_start);
     for (int i = 0; i < n0; i++) {
         if (bikers[i].id == eliminated) {
             printf("biker %lu won\n", bikers[i].id);
